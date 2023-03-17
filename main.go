@@ -3,20 +3,20 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 )
+
+// Default baseDir directory
+var baseDir = "."
 
 func main() {
 	args := os.Args[1:]
 
-	// Default arg to cwd
-	base := "."
 	if len(args) > 0 {
-		base = args[0]
+		baseDir = args[0]
 	}
 
-	list, err := os.ReadDir(base)
+	list, err := os.ReadDir(baseDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -42,39 +42,12 @@ func main() {
 	// Print dirs
 	for _, dir := range dirs {
 		name := dir.Name()
-		icon := dirIcon
-		fullPath := filepath.Join(base, name)
-		if isEmpty(fullPath) {
-			icon = emptyDirIcon
-		}
-		fmt.Printf("\033[34m%s %s\033[0m\n", icon, name)
+		printDir(name)
 	}
 
 	// Print files
 	for _, file := range files {
 		name := file.Name()
-		ext := filepath.Ext(name)
-		icon, ok := icons[ext]
-		if !ok {
-			icon = fileIcon
-		}
-		fmt.Printf("%s %s\n", icon, name)
-	}
-}
-
-// isEmpty reports whether a directory is empty.
-func isEmpty(dir string) bool {
-	f, err := os.Open(dir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-
-	_, err = f.Readdir(1)
-	if err == nil {
-		return false
-	} else {
-		return true
+		printFile(name)
 	}
 }
