@@ -1,19 +1,26 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"sort"
 )
 
-// Default baseDir directory
 var baseDir = "."
 
 func main() {
-	args := os.Args[1:]
+	fFlag := flag.Bool("f", false, "List files only")
+	dFlag := flag.Bool("d", false, "List directories only")
+	flag.Parse()
 
-	if len(args) > 0 {
-		baseDir = args[0]
+	argc := flag.NArg()
+	if argc == 1 {
+		baseDir = flag.Arg(0)
+	}
+	if argc > 1 {
+		fmt.Fprintln(os.Stderr, "l: too many arguments")
+		os.Exit(1)
 	}
 
 	list, err := os.ReadDir(baseDir)
@@ -26,12 +33,30 @@ func main() {
 	var dirs []os.DirEntry
 	var files []os.DirEntry
 
-	// Populate the slices
-	for _, item := range list {
-		if item.IsDir() {
-			dirs = append(dirs, item)
-		} else {
-			files = append(files, item)
+	// Populate the slices depending on the flag
+	switch {
+	case *dFlag && *fFlag:
+		fmt.Fprintln(os.Stderr, "l: flags -f and -d can't be both set")
+		os.Exit(1)
+	case !*dFlag && *fFlag:
+		for _, item := range list {
+			if !item.IsDir() {
+				files = append(files, item)
+			}
+		}
+	case *dFlag && !*fFlag:
+		for _, item := range list {
+			if item.IsDir() {
+				dirs = append(dirs, item)
+			}
+		}
+	default:
+		for _, item := range list {
+			if item.IsDir() {
+				dirs = append(dirs, item)
+			} else {
+				files = append(files, item)
+			}
 		}
 	}
 
