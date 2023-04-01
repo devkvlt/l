@@ -12,6 +12,7 @@ var baseDir = "."
 func main() {
 	fFlag := flag.Bool("f", false, "List files only")
 	dFlag := flag.Bool("d", false, "List directories only")
+	mFlag := flag.Bool("m", false, "Show last time modified")
 	flag.Parse()
 
 	argc := flag.NArg()
@@ -67,12 +68,12 @@ func main() {
 	// Print dirs
 	for _, dir := range dirs {
 		name := dir.Name()
-		printDir(name)
+		printDir(name, *mFlag)
 	}
 
 	// Print files
 	for _, file := range files {
 		name := file.Name()
-		printFile(name)
+		printFile(name, *mFlag)
 	}
 }
