@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -74,7 +75,8 @@ func formatModTime(name string, mod bool) string {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return ""
 	}
-	return fmt.Sprintf(" (%s)", timeSince(info.ModTime()))
+	pad := strings.Repeat(" ", maxLen-len(name))
+	return fmt.Sprintf("%s  %s", pad, timeSince(info.ModTime()))
 }
 
 // timeSince returns the time elapsed since the given date in a human-friendly

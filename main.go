@@ -9,6 +9,9 @@ import (
 
 var baseDir = "."
 
+// Length of the longest file/dir name
+var maxLen = 0
+
 func main() {
 	fFlag := flag.Bool("f", false, "List files only")
 	dFlag := flag.Bool("d", false, "List directories only")
@@ -58,6 +61,20 @@ func main() {
 			} else {
 				files = append(files, item)
 			}
+		}
+	}
+
+	// Determine the length of the longest name
+	for _, dir := range files {
+		l := len(dir.Name())
+		if l > maxLen {
+			maxLen = l
+		}
+	}
+	for _, dir := range dirs {
+		l := len(dir.Name())
+		if l > maxLen {
+			maxLen = l
 		}
 	}
 
