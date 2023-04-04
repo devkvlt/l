@@ -70,7 +70,8 @@ func formatModTime(name string, mod bool) string {
 		return ""
 	}
 
-	info, err := os.Stat(name)
+	path := filepath.Join(baseDir, name)
+	info, err := os.Stat(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return ""
