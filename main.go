@@ -3,8 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
+	"time"
 )
 
 var baseDir = "."
@@ -12,10 +15,32 @@ var baseDir = "."
 // Length of the longest file/dir name
 var maxLen = 0
 
+// Entry represents a simplified version of fs.DirEntry.
+type Entry struct {
+	name              string
+	daysSinceModified int
+}
+
+// add converts an entry of type fs.DirEntry into an entry of type Entry and
+// adds it to the provided slice of entries.
+func add(entries []Entry, fsEntry fs.DirEntry) []Entry {
+	path := filepath.Join(baseDir, fsEntry.Name())
+	stat, err := os.Stat(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+	return append(entries, Entry{
+		name:              fsEntry.Name(),
+		daysSinceModified: int(time.Since(stat.ModTime()).Hours() / 24),
+	})
+}
+
 func main() {
 	fFlag := flag.Bool("f", false, "List files only")
 	dFlag := flag.Bool("d", false, "List directories only")
 	mFlag := flag.Bool("m", false, "Show last time modified")
+	sFlag := flag.String("s", "name", "Sort method")
 	flag.Parse()
 
 	argc := flag.NArg()
@@ -34,63 +59,72 @@ func main() {
 	}
 
 	// Slices of dirs and files
-	var dirs []os.DirEntry
-	var files []os.DirEntry
+	var dirs []Entry
+	var files []Entry
 
 	// Populate the slices depending on the flag
 	switch {
 	case *dFlag && *fFlag:
-		fmt.Fprintln(os.Stderr, "l: flags -f and -d can't be both set")
+		fmt.Fprintln(os.Stderr, "l: flags -f and -d cannot be used together")
 		os.Exit(1)
 	case !*dFlag && *fFlag:
 		for _, item := range list {
 			if !item.IsDir() {
-				files = append(files, item)
+				files = add(files, item)
 			}
 		}
 	case *dFlag && !*fFlag:
 		for _, item := range list {
 			if item.IsDir() {
-				dirs = append(dirs, item)
+				dirs = add(dirs, item)
 			}
 		}
 	default:
 		for _, item := range list {
 			if item.IsDir() {
-				dirs = append(dirs, item)
+				dirs = add(dirs, item)
 			} else {
-				files = append(files, item)
+				files = add(files, item)
 			}
 		}
 	}
 
 	// Determine the length of the longest name
-	for _, dir := range files {
-		l := len(dir.Name())
-		if l > maxLen {
-			maxLen = l
+	if *mFlag {
+		for _, dir := range files {
+			l := len(dir.name)
+			if l > maxLen {
+				maxLen = l
+			}
 		}
-	}
-	for _, dir := range dirs {
-		l := len(dir.Name())
-		if l > maxLen {
-			maxLen = l
+		for _, dir := range dirs {
+			l := len(dir.name)
+			if l > maxLen {
+				maxLen = l
+			}
 		}
 	}
 
-	// Sort by name
-	sort.Slice(dirs, func(i, j int) bool { return dirs[i].Name() < dirs[j].Name() })
-	sort.Slice(files, func(i, j int) bool { return files[i].Name() < files[j].Name() })
+	// Sort
+	switch *sFlag {
+	case "name":
+		sort.Slice(dirs, func(i, j int) bool { return dirs[i].name < dirs[j].name })
+		sort.Slice(files, func(i, j int) bool { return files[i].name < files[j].name })
+	case "time":
+		sort.Slice(dirs, func(i, j int) bool { return dirs[i].daysSinceModified < dirs[j].daysSinceModified })
+		sort.Slice(files, func(i, j int) bool { return files[i].daysSinceModified < files[j].daysSinceModified })
+	default:
+		fmt.Fprintln(os.Stderr, "l: unknown value for flag -s, possible values are \"name\" (default) and \"time\"")
+		os.Exit(1)
+	}
 
 	// Print dirs
 	for _, dir := range dirs {
-		name := dir.Name()
-		printDir(name, *mFlag)
+		printDir(dir, *mFlag)
 	}
 
 	// Print files
 	for _, file := range files {
-		name := file.Name()
-		printFile(name, *mFlag)
+		printFile(file, *mFlag)
 	}
 }

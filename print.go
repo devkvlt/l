@@ -5,36 +5,35 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 // printDir prints a directory's name along with its icon, color.
-func printDir(name string, mod bool) {
+func printDir(entry Entry, mod bool) {
 	icon := dirIcon
-	path := filepath.Join(baseDir, name)
+	path := filepath.Join(baseDir, entry.name)
 	if isEmpty(path) {
 		icon = emptyDirIcon
 	}
-	modTime := formatModTime(name, mod)
-	fmt.Printf("\033[34m%s %s\033[0m%s\n", icon, name, modTime)
+	modTime := formatModTime(entry, mod)
+	fmt.Printf("\033[34m%s %s\033[0m%s\n", icon, entry.name, modTime)
 }
 
-// printFile print a filename along with its icon and color.
-func printFile(name string, mod bool) {
-	ext := filepath.Ext(name)
+// printFile prints a filename along with its icon and color.
+func printFile(entry Entry, mod bool) {
+	ext := filepath.Ext(entry.name)
 	icon := defaultFileIcon
 
-	if data, ok := specialFileIcons[name]; ok {
-		icon = color(data.icon, data.color)
+	if data, ok := specialFileIcons[entry.name]; ok {
+		icon = colorize(data.icon, data.color)
 	} else if data, ok := filetypeIcons[ext]; ok {
-		icon = color(data.icon, data.color)
+		icon = colorize(data.icon, data.color)
 	}
-	modTime := formatModTime(name, mod)
-	fmt.Printf("%s %s%s\n", icon, name, modTime)
+	modTime := formatModTime(entry, mod)
+	fmt.Printf("%s %s%s\n", icon, entry.name, modTime)
 }
 
-// color colors a string with the given color.
-func color(s string, c int8) string {
+// colorize colorizes a string with the given colorize.
+func colorize(s string, c int8) string {
 	switch c {
 	case red:
 		return "\033[31m" + s + "\033[0m"
@@ -67,23 +66,14 @@ func isEmpty(dir string) bool {
 
 // formatModTime formats modified time by adding appropriate padding and
 // coloring.
-func formatModTime(name string, mod bool) string {
+func formatModTime(entry Entry, mod bool) string {
 	if !mod {
 		return ""
 	}
 
-	path := filepath.Join(baseDir, name)
-
-	stat, err := os.Stat(path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		return ""
-		// TODO: handle this appropriately
-	}
-
-	days := int(time.Since(stat.ModTime()).Hours() / 24)
-
 	modColor := none
+	days := entry.daysSinceModified
+
 	switch {
 	case days > 120:
 		modColor = red
@@ -93,8 +83,8 @@ func formatModTime(name string, mod bool) string {
 		modColor = green
 	}
 
-	pad := strings.Repeat(" ", maxLen-len(name)+2)
-	modTime := color(timeSince(days), modColor)
+	pad := strings.Repeat(" ", maxLen-len(entry.name)+2)
+	modTime := colorize(timeSince(days), modColor)
 
 	return fmt.Sprintf("%s%s", pad, modTime)
 }
