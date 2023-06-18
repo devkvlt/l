@@ -29,8 +29,8 @@ func printFile(name string, mod bool) {
 	} else if data, ok := filetypeIcons[ext]; ok {
 		icon = color(data.icon, data.color)
 	}
-	modified := formatModTime(name, mod)
-	fmt.Printf("%s %s%s\n", icon, name, modified)
+	modTime := formatModTime(name, mod)
+	fmt.Printf("%s %s%s\n", icon, name, modTime)
 }
 
 // color colors a string with the given color.
@@ -65,27 +65,43 @@ func isEmpty(dir string) bool {
 	return err != nil
 }
 
+// formatModTime formats modified time by adding appropriate padding and
+// coloring.
 func formatModTime(name string, mod bool) string {
 	if !mod {
 		return ""
 	}
 
 	path := filepath.Join(baseDir, name)
-	info, err := os.Stat(path)
+
+	stat, err := os.Stat(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return ""
+		// TODO: handle this appropriately
 	}
-	pad := strings.Repeat(" ", maxLen-len(name))
-	return fmt.Sprintf("%s  %s", pad, timeSince(info.ModTime()))
+
+	days := int(time.Since(stat.ModTime()).Hours() / 24)
+
+	modColor := none
+	switch {
+	case days > 120:
+		modColor = red
+	case days > 30:
+		modColor = yellow
+	case days <= 7:
+		modColor = green
+	}
+
+	pad := strings.Repeat(" ", maxLen-len(name)+2)
+	modTime := color(timeSince(days), modColor)
+
+	return fmt.Sprintf("%s%s", pad, modTime)
 }
 
-// timeSince returns the time elapsed since the given date in a human-friendly
-// format.
-func timeSince(t time.Time) string {
-	diff := time.Since(t)
-	days := int(diff.Hours() / 24)
-
+// timeSince returns the time elapsed in the given number of days in a
+// human-friendly format.
+func timeSince(days int) string {
 	switch {
 	case days >= 365:
 		years := days / 365
