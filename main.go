@@ -30,9 +30,27 @@ func add(entries []Entry, fsEntry fs.DirEntry) []Entry {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	modTime := stat.ModTime()
+
+	if fsEntry.IsDir() {
+		dirEntries, err := os.ReadDir(path)
+		if err == nil {
+			for _, e := range dirEntries {
+				if e.IsDir() && e.Name() == ".git" {
+					gitPath := filepath.Join(baseDir, fsEntry.Name(), ".git")
+					gitStat, err := os.Stat(gitPath)
+					if err == nil {
+						modTime = gitStat.ModTime()
+					}
+				}
+			}
+		}
+	}
+
 	return append(entries, Entry{
 		name:              fsEntry.Name(),
-		daysSinceModified: int(time.Since(stat.ModTime()).Hours() / 24),
+		daysSinceModified: int(time.Since(modTime).Hours() / 24),
 	})
 }
 
@@ -90,6 +108,7 @@ func main() {
 	}
 
 	// Determine the length of the longest name
+	// TODO: truncate vert long names
 	if *mFlag {
 		for _, dir := range files {
 			l := len(dir.name)
