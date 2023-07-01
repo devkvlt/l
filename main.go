@@ -67,13 +67,13 @@ func main() {
 	case *dFlag && *fFlag:
 		fmt.Fprintln(os.Stderr, "l: flags -f and -d cannot be used together")
 		os.Exit(1)
-	case !*dFlag && *fFlag:
+	case *fFlag:
 		for _, item := range list {
 			if !item.IsDir() {
 				files = add(files, item)
 			}
 		}
-	case *dFlag && !*fFlag:
+	case *dFlag:
 		for _, item := range list {
 			if item.IsDir() {
 				dirs = add(dirs, item)
