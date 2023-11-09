@@ -15,7 +15,12 @@ func printDir(entry Entry, mod bool) {
 		icon = emptyDirIcon
 	}
 	modTime := formatModTime(entry, mod)
-	fmt.Printf("\033[34m%s %s\033[0m%s\n", icon, entry.name, modTime)
+	name := entry.name
+	if entry.isSymlink {
+		name = colorize(name, cyan)
+		icon = symlinkIcon
+	}
+	fmt.Printf("\033[34m%s %s\033[0m%s\n", icon, name, modTime)
 }
 
 // printFile prints a filename along with its icon and color.
@@ -29,7 +34,11 @@ func printFile(entry Entry, mod bool) {
 		icon = colorize(data.icon, data.color)
 	}
 	modTime := formatModTime(entry, mod)
-	fmt.Printf("%s %s%s\n", icon, entry.name, modTime)
+	name := entry.name
+	if entry.isSymlink {
+		name = colorize(name, cyan)
+	}
+	fmt.Printf("%s %s%s\n", icon, name, modTime)
 }
 
 // colorize colorizes a string with the given colorize.

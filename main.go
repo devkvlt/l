@@ -19,20 +19,23 @@ var maxLen = 0
 type Entry struct {
 	name              string
 	daysSinceModified int
+	isSymlink         bool
 }
 
 // add converts an entry of type fs.DirEntry into an entry of type Entry and
 // adds it to the provided slice of entries.
 func add(entries []Entry, fsEntry fs.DirEntry) []Entry {
 	path := filepath.Join(baseDir, fsEntry.Name())
-	stat, err := os.Stat(path)
+	fi, err := os.Lstat(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	modTime := stat.ModTime()
+	modTime := fi.ModTime()
 
+	// ISSUE: This is unreliable, should get the time of the last commit
+	// instead.
 	if fsEntry.IsDir() {
 		dirEntries, err := os.ReadDir(path)
 		if err == nil {
@@ -51,6 +54,7 @@ func add(entries []Entry, fsEntry fs.DirEntry) []Entry {
 	return append(entries, Entry{
 		name:              fsEntry.Name(),
 		daysSinceModified: int(time.Since(modTime).Hours() / 24),
+		isSymlink:         fi.Mode()&os.ModeSymlink != 0,
 	})
 }
 
@@ -59,14 +63,19 @@ func main() {
 	dFlag := flag.Bool("d", false, "List directories only")
 	mFlag := flag.Bool("m", false, "Show last time modified")
 	sFlag := flag.String("s", "name", "Sort method")
+
 	flag.Parse()
 
 	argc := flag.NArg()
 	if argc == 1 {
 		baseDir = flag.Arg(0)
-	}
-	if argc > 1 {
+	} else if argc > 1 {
 		fmt.Fprintln(os.Stderr, "l: too many arguments")
+		os.Exit(1)
+	}
+
+	if *dFlag && *fFlag {
+		fmt.Fprintln(os.Stderr, "l: flags -f and -d cannot be used together")
 		os.Exit(1)
 	}
 
@@ -80,30 +89,20 @@ func main() {
 	var dirs []Entry
 	var files []Entry
 
-	// Populate the slices depending on the flag
-	switch {
-	case *dFlag && *fFlag:
-		fmt.Fprintln(os.Stderr, "l: flags -f and -d cannot be used together")
-		os.Exit(1)
-	case *fFlag:
-		for _, item := range list {
-			if !item.IsDir() {
-				files = add(files, item)
-			}
+	// Populate the slices
+	for _, item := range list {
+		fi, err := os.Stat(filepath.Join(baseDir, item.Name()))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
 		}
-	case *dFlag:
-		for _, item := range list {
-			if item.IsDir() {
+
+		if fi.IsDir() {
+			if !*fFlag {
 				dirs = add(dirs, item)
 			}
-		}
-	default:
-		for _, item := range list {
-			if item.IsDir() {
-				dirs = add(dirs, item)
-			} else {
-				files = add(files, item)
-			}
+		} else if !*dFlag {
+			files = add(files, item)
 		}
 	}
 

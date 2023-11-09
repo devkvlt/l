@@ -13,6 +13,7 @@ const (
 const (
 	dirIcon         = " "
 	emptyDirIcon    = " "
+	symlinkIcon     = " "
 	defaultFileIcon = " "
 )
 
